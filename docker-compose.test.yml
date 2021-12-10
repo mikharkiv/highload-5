@@ -11,8 +11,6 @@ services:
       - worker/worker.env
     depends_on:
       - redis
-    volumes:
-      - "./db/:/app/db/"
 
   redis:
     image: redis:latest
