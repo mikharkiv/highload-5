@@ -3,3 +3,4 @@ venv/
 .idea/
 worker/db
 db/
+.pytest_cache/

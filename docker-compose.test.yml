@@ -1,0 +1,31 @@
+version: "3.2"
+services:
+  worker:
+    image: postnikovlab4-worker
+    build:
+      dockerfile: worker/worker.Dockerfile
+      context: ""
+    container_name: "worker"
+    restart: "on-failure"
+    env_file:
+      - worker/worker.env
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:latest
+    container_name: "redis"
+    expose:
+      - "6379"
+    restart: "no"
+
+  test:
+    image: postnikovlab4-test
+    build:
+      dockerfile: test.Dockerfile
+      context: ""
+    container_name: "test"
+    restart: "on-failure"
+    depends_on:
+      - redis
+      - worker

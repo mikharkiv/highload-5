@@ -5,17 +5,6 @@ from typing import Dict
 import redis
 import sqlite3
 
-last_ids = defaultdict(lambda: "$")
-conn = sqlite3.connect("./db/books.sqlite3")
-cursor = conn.cursor()
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS books (
-        `bname` TEXT,
-        author TEXT,
-        comment TEXT);
-""")
-conn.commit()
-
 
 def process_event(event):
     if event["type"] == "add_book":
@@ -56,6 +45,16 @@ def read_event(stream: str):
 
 
 if __name__ == '__main__':
+    last_ids = defaultdict(lambda: "$")
+    conn = sqlite3.connect("./db/books.sqlite3")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS books (
+            `bname` TEXT,
+            author TEXT,
+            comment TEXT);
+    """)
+    conn.commit()
     rds = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
     print("Worker STARTED")
     while True:

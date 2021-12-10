@@ -6,18 +6,6 @@ from multiprocessing.pool import ThreadPool
 import redis
 from flask import Flask, Response, request
 
-last_ids = defaultdict(lambda: "$")
-
-app = Flask(__name__)
-pool = ThreadPool(processes=20)
-
-
-@app.route("/get-book/<book_name>/", methods=["GET"])
-def get_book(book_name):
-    async_result = pool.apply_async(async_get_book, (book_name,))
-    res = async_result.get()
-    return Response(res, status=200 if res else 404)
-
 
 def async_get_book(book_id):
     if not rds.get(book_id):
@@ -26,23 +14,6 @@ def async_get_book(book_id):
         read_event("1")
         print('Got answer from Worker')
     return rds.get(book_id)
-
-
-@app.route("/add-book/", methods=["POST"])
-def add_book():
-    book = request.json
-    if not isinstance(book, dict) or {"name", "author", "comment"} - set(book.keys()):
-        return Response("Invalid data", status=400)
-    # Checking if book with same name exists
-    if not rds.get(book["name"]):
-        async_result = pool.apply_async(async_get_book, (book["name"],))
-        if not async_result.get():
-            send_event({"type": "add_book", "book": json.dumps(book)}, "1")
-            print('Send add_book to Worker')
-            return Response(json.dumps(book), status=200)
-
-    return Response(f'Book with name {book["name"]} already exists', status=400)
-
 
 
 def send_event(event: Dict, stream: str):
@@ -57,7 +28,39 @@ def read_event(stream: str):
     return event_obj
 
 
-if __name__ == "__main__":
+def create_app():
+    global last_ids
+    global pool
+    global rds
+    last_ids = defaultdict(lambda: "$")
+    app = Flask(__name__)
+    pool = ThreadPool(processes=20)
     rds = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-    app.run(host="0.0.0.0", debug=True)
     print("Web STARTED")
+
+    @app.route("/get-book/<book_name>/", methods=["GET"])
+    def get_book(book_name):
+        async_result = pool.apply_async(async_get_book, (book_name,))
+        res = async_result.get()
+        return Response(res, status=200 if res else 404)
+
+    @app.route("/add-book/", methods=["POST"])
+    def add_book():
+        book = request.json
+        if not isinstance(book, dict) or {"name", "author", "comment"} - set(book.keys()):
+            return Response("Invalid data", status=400)
+        # Checking if book with same name exists
+        if not rds.get(book["name"]):
+            async_result = pool.apply_async(async_get_book, (book["name"],))
+            if not async_result.get():
+                send_event({"type": "add_book", "book": json.dumps(book)}, "1")
+                print('Send add_book to Worker')
+                return Response(json.dumps(book), status=200)
+
+        return Response(f'Book with name {book["name"]} already exists', status=400)
+
+    return app
+
+
+if __name__ == "__main__":
+    create_app().run(host="0.0.0.0", debug=True)
