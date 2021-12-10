@@ -1,0 +1,39 @@
+version: "3.2"
+services:
+  web:
+    image: postnikovlab4-web
+    build:
+      dockerfile: web/web.Dockerfile
+      context: ""
+    container_name: "web"
+    restart: "on-failure"
+    env_file:
+      - web/web.env
+    depends_on:
+      - redis
+    ports:
+      - "5000:5000"
+    volumes:
+      - "./web/:/app/"
+
+  worker:
+    image: postnikovlab4-worker
+    build:
+      dockerfile: worker/worker.Dockerfile
+      context: ""
+    container_name: "worker"
+    restart: "on-failure"
+    env_file:
+      - worker/worker.env
+    depends_on:
+      - redis
+    volumes:
+      - "./db/:/app/db/"
+      - "./worker/:/app/"
+
+  redis:
+    image: redis:latest
+    container_name: "redis"
+    expose:
+      - "6379"
+    restart: "no"
